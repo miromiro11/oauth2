@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google/internal/stsexchange"
+	"github.com/miromiro11/oauth2"
+	"github.com/miromiro11/oauth2/google/internal/stsexchange"
 )
 
 const expiryDelta = 10 * time.Second

@@ -14,7 +14,7 @@ import (
 	"net/url"
 	"testing"
 
-	"golang.org/x/oauth2/options"
+	"github.com/miromiro11/oauth2/options"
 )
 
 func TestRetrieveToken_InParams(t *testing.T) {
