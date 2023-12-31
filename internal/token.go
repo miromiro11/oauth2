@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"mime"
 	"net/http"
@@ -20,6 +19,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/oauth2/options"
 )
 
 // Token represents the credentials used to authorize
@@ -209,7 +210,7 @@ func cloneURLValues(v url.Values) url.Values {
 	return v2
 }
 
-func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string, v url.Values, authStyle AuthStyle, styleCache *AuthStyleCache) (*Token, error) {
+func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string, rOptions options.RequestOptions, v url.Values, authStyle AuthStyle, styleCache *AuthStyleCache) (*Token, error) {
 	needsAuthStyleProbe := authStyle == 0
 	if needsAuthStyleProbe {
 		if style, ok := styleCache.lookupAuthStyle(tokenURL); ok {
@@ -223,7 +224,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
 	if err != nil {
 		return nil, err
 	}
-	token, err := doTokenRoundTrip(ctx, req)
+	token, err := doTokenRoundTrip(ctx, req, rOptions)
 	if err != nil && needsAuthStyleProbe {
 		// If we get an error, assume the server wants the
 		// clientID & clientSecret in a different form.
@@ -239,7 +240,7 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
 		// So just try both ways.
 		authStyle = AuthStyleInParams // the second way we'll try
 		req, _ = newTokenRequest(tokenURL, clientID, clientSecret, v, authStyle)
-		token, err = doTokenRoundTrip(ctx, req)
+		token, err = doTokenRoundTrip(ctx, req, rOptions)
 	}
 	if needsAuthStyleProbe && err == nil {
 		styleCache.setAuthStyle(tokenURL, authStyle)
@@ -252,12 +253,17 @@ func RetrieveToken(ctx context.Context, clientID, clientSecret, tokenURL string,
 	return token, err
 }
 
-func doTokenRoundTrip(ctx context.Context, req *http.Request) (*Token, error) {
-	r, err := ContextClient(ctx).Do(req.WithContext(ctx))
+func doTokenRoundTrip(ctx context.Context, req *http.Request, rOptions options.RequestOptions) (*Token, error) {
+	// r, err := ContextClient(ctx).Do(req.WithContext(ctx))
+	client := ContextClient(ctx)
+	if rOptions.Proxy != (url.URL{}) {
+		client.Transport = &http.Transport{Proxy: http.ProxyURL(&rOptions.Proxy)}
+	}
+	r, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1<<20))
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	r.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("oauth2: cannot fetch token: %v", err)

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"golang.org/x/oauth2/internal"
+	"golang.org/x/oauth2/options"
 )
 
 // NoContext is the default context you should supply if not using
@@ -62,6 +63,16 @@ type Config struct {
 	// authStyleCache caches which auth style to use when Endpoint.AuthStyle is
 	// the zero value (AuthStyleAutoDetect).
 	authStyleCache internal.LazyAuthStyleCache
+
+	requestOptions options.RequestOptions
+}
+
+type RequestOptions struct {
+	Proxy url.URL
+}
+
+func (c *Config) SetRequestOptions(opts options.RequestOptions) {
+	c.requestOptions = opts
 }
 
 // A TokenSource is anything that can return a token.
